@@ -2,32 +2,40 @@ name: Daily DataBreaches News
 
 on:
   schedule:
-    - cron: '0 13 * * *'   # UTC13:00 → ET09:00
-  workflow_dispatch:
+    - cron: '0 13 * * *'   # UTC 13:00 → ET 09:00
+  workflow_dispatch:      # 수동 실행도 가능
 
 jobs:
   fetch-and-comment:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v3
-    - uses: actions/setup-python@v4
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Setup Python
+      uses: actions/setup-python@v4
       with:
         python-version: '3.x'
-    - run: pip install requests feedparser transformers torch
-    - id: fetch
+
+    - name: Install dependencies
+      run: |
+        pip install requests feedparser transformers torch
+
+    - name: Run script and capture output
+      id: fetch
       run: |
         python fetch_and_summarize.py > news.txt
         echo "::set-output name=body::$(sed ':a;N;$!ba;s/\n/\\n/g' news.txt)"
-    - uses: actions/github-script@v6
+
+    - name: Post comment to Issue
+      uses: actions/github-script@v6
       with:
         github-token: ${{ secrets.GITHUB_TOKEN }}
         script: |
-          const issue_number = 1    # ← 실제 이슈 번호로 변경
-          const body = `${{ steps.fetch.outputs.body }}`
-          await github.rest.issues.createComment({
+          github.rest.issues.createComment({
             owner: context.repo.owner,
-            repo: context.repo.repo,
-            issue_number,
-            body
-          })
+            repo:  context.repo.repo,
+            issue_number: 1,                            # ← 실제 이슈 번호로 변경
+            body: '${{ steps.fetch.outputs.body }}'
+          });
